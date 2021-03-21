@@ -15,11 +15,95 @@ fn random_string(n: usize) -> String {
 
 #[test]
 fn test_simple() {
-    for n in 1..100 {
+    for _n in 1..1000 {
         let x: u8 = random();
-        let s = random_string(2 * (x as usize));
+        let s = random_string(x as usize);
         let fs = FastString::new(s.as_str());
         assert_eq!(s, fs);
-        println!("string number {}: size: {}, chars: {}", n, 2 * (x as usize), fs)
+        assert_eq!(s.len(), fs.len());
+        assert_eq!(s.is_empty(), fs.is_empty());
     }
 }
+
+#[test]
+fn test_push() {
+    for _n in 1..1000 {
+        let mut x: u8 = random();
+        let mut s = random_string(x as usize);
+        let mut fs = FastString::new(s.as_str());
+        x = random();
+        let text = random_string(x as usize);
+        for char in text.chars() {
+            s.push(char);
+            fs.push(char);
+            assert_eq!(s, fs);
+            assert_eq!(s.len(), fs.len());
+            assert_eq!(s.is_empty(), fs.is_empty());
+        }
+    }
+}
+
+#[test]
+fn test_push_str() {
+    for _n in 1..1000 {
+        let mut x: u8 = random();
+        let mut s = random_string(x as usize);
+        let mut fs = FastString::new(s.as_str());
+        x = random();
+        let text = random_string(x as usize);
+        s.push_str(text.as_str());
+        fs.push_str(text.as_str());
+        assert_eq!(s, fs);
+        assert_eq!(s.len(), fs.len());
+        assert_eq!(s.is_empty(), fs.is_empty());
+    }
+}
+
+
+#[test]
+fn test_clone() {
+    for _n in 1..1000 {
+        let mut x: u8 = random();
+        let mut s = random_string(x as usize);
+        let mut fs = FastString::new(s.as_str());
+        let mut fs_clone = fs.clone();
+        x = random();
+        let text = random_string(x as usize);
+        for char in text.chars() {
+            s.push(char);
+            fs.push(char);
+            fs_clone.push(char);
+            assert_eq!(s, fs);
+            assert_eq!(s.len(), fs.len());
+            assert_eq!(s.is_empty(), fs.is_empty());
+            assert_eq!(fs, fs_clone);
+            assert_eq!(fs.len(), fs_clone.len());
+            assert_eq!(fs.is_empty(), fs_clone.is_empty());
+        }
+    }
+}
+
+
+#[test]
+fn test_clone2() {
+    for _n in 1..1000 {
+        let mut x: u8 = random();
+        let mut s = random_string(x as usize);
+        let s_clone = s.clone();
+        let mut fs = FastString::new(s.as_str());
+        let fs_clone = fs.clone();
+        x = random();
+        let text = random_string(x as usize);
+        for char in text.chars() {
+            s.push(char);
+            fs.push(char);
+            assert_eq!(s, fs);
+            assert_eq!(s.len(), fs.len());
+            assert_eq!(s.is_empty(), fs.is_empty());
+            assert_eq!(s_clone, fs_clone);
+            assert_eq!(s_clone.len(), fs_clone.len());
+            assert_eq!(s_clone.is_empty(), fs_clone.is_empty());
+        }
+    }
+}
+
