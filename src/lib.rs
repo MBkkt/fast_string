@@ -1,12 +1,5 @@
 use std::{
-    sync::Arc,
-    mem::size_of,
-    str::from_utf8_unchecked,
-    vec::Vec,
-    fmt,
-    cmp::Ord,
-    cmp::Ordering,
-    hash,
+    cmp::Ord, cmp::Ordering, fmt, hash, mem::size_of, str::from_utf8_unchecked, sync::Arc, vec::Vec,
 };
 
 #[derive(Clone)]
@@ -14,8 +7,12 @@ pub struct FastString(StringInner);
 
 impl FastString {
     #[inline(always)]
-    pub fn new<T>(string: T) -> FastString // TODO empty string and From
-        where T: AsRef<str> { // TODO Why?
+    pub fn new<T>(string: T) -> FastString
+    // TODO empty string and From
+    where
+        T: AsRef<str>,
+    {
+        // TODO Why?
         FastString(StringInner::new(string.as_ref()))
     }
 
@@ -152,9 +149,15 @@ impl StringInner {
         return if new_len <= SSO_CAPACITY {
             let mut new_data = [0; SSO_CAPACITY];
             new_data[..new_len].copy_from_slice(text.as_bytes());
-            StringInner::Small { data: new_data, len: new_len as u8 }
+            StringInner::Small {
+                data: new_data,
+                len: new_len as u8,
+            }
         } else {
-            StringInner::Large { data: Arc::from(Vec::from(text.as_bytes())), len: new_len }
+            StringInner::Large {
+                data: Arc::from(Vec::from(text.as_bytes())),
+                len: new_len,
+            }
         };
     }
 
@@ -186,24 +189,25 @@ impl StringInner {
                     let mut new_data = Vec::with_capacity(new_len);
                     new_data.extend_from_slice(&data[..*len as usize]);
                     new_data.extend_from_slice(string.as_bytes());
-                    *self = StringInner::Large { data: Arc::from(new_data), len: new_len };
+                    *self = StringInner::Large {
+                        data: Arc::from(new_data),
+                        len: new_len,
+                    };
                 }
             }
-            StringInner::Large { data, len } => {
-                match Arc::get_mut(data) {
-                    Some(old_data) => {
-                        old_data.extend_from_slice(string.as_bytes());
-                        *len = old_data.len();
-                    }
-                    None => {
-                        *len = data.len() + string.len();
-                        let mut new_data = Vec::with_capacity(*len);
-                        new_data.extend_from_slice(data.as_slice());
-                        new_data.extend_from_slice(string.as_bytes());
-                        *data = Arc::from(new_data);
-                    }
+            StringInner::Large { data, len } => match Arc::get_mut(data) {
+                Some(old_data) => {
+                    old_data.extend_from_slice(string.as_bytes());
+                    *len = old_data.len();
                 }
-            }
+                None => {
+                    *len = data.len() + string.len();
+                    let mut new_data = Vec::with_capacity(*len);
+                    new_data.extend_from_slice(data.as_slice());
+                    new_data.extend_from_slice(string.as_bytes());
+                    *data = Arc::from(new_data);
+                }
+            },
         };
     }
 
