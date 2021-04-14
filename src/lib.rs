@@ -16,6 +16,9 @@ impl FastString {
         FastString(StringInner::new(string.as_ref()))
     }
 
+    // I *think* we need to mark the `StringInner::as_str` as inline as well.
+    // See https://github.com/matklad/rust-inline
+    // Better yet, compile an small example that uses FastString and look at the assemply yourself
     #[inline(always)]
     pub fn as_str(&self) -> &str {
         self.0.as_str()
@@ -40,6 +43,7 @@ impl FastString {
 impl std::ops::Deref for FastString {
     type Target = str;
 
+    // Missing inline
     fn deref(&self) -> &Self::Target {
         self.as_str()
     }
@@ -56,7 +60,7 @@ impl fmt::Display for FastString {
         fmt::Display::fmt(self.as_str(), f)
     }
 }
-
+// All equal/Ord impls miss inline
 impl PartialEq<FastString> for FastString {
     fn eq(&self, other: &FastString) -> bool {
         self.as_str() == other.as_str()
@@ -77,8 +81,9 @@ impl PartialEq<FastString> for str {
     }
 }
 
-impl<'a> PartialEq<&'a str> for FastString {
-    fn eq(&self, other: &&'a str) -> bool {
+// The following also works
+impl PartialEq<&'_ str> for FastString {
+    fn eq(&self, other: &&str) -> bool {
         self == *other
     }
 }
@@ -131,7 +136,17 @@ impl hash::Hash for FastString {
     }
 }
 
+// TODO: implement `Borrow`, `AsRef`, `AsMut`
+
+// Let's move all the actual impl stuff to an `imp.rs` module, to have a clearer
+// separation between public API and impl details.
+//
+// This is primary for folks who read the source code to understand the API --
+// if there's a dedicated "header" file which lists public API, and only public
+// API, it's easy to quickly skim it.
+
 const fn max(a: usize, b: usize) -> usize {
+    // Use `if` here.
     [a, b][(a < b) as usize]
 }
 
@@ -146,7 +161,7 @@ enum StringInner {
 impl StringInner {
     fn new(text: &str) -> Self {
         let new_len = text.len();
-        return if new_len <= SSO_CAPACITY {
+        if new_len <= SSO_CAPACITY {
             let mut new_data = [0; SSO_CAPACITY];
             new_data[..new_len].copy_from_slice(text.as_bytes());
             StringInner::Small {
@@ -158,13 +173,20 @@ impl StringInner {
                 data: Arc::from(Vec::from(text.as_bytes())),
                 len: new_len,
             }
-        };
+        }
     }
 
     fn as_str(&self) -> &str {
         match self {
             StringInner::Small { data, len } => {
                 let len = *len as usize;
+                // We should also use `get_unchecked` for `[..len]` bit, to
+                // avoid the bounds check.
+                //
+                // The primary cost of the check would be an extra code bloat --
+                // each call-site would now include a landing pad for unwinding.
+                //
+                // In terms of C++, it can be good to make core functions no_except.
                 unsafe { from_utf8_unchecked(&data[..len]) } // TODO unsafe
             }
             StringInner::Large { data, len: _ } => {
@@ -181,6 +203,7 @@ impl StringInner {
     fn push_str(&mut self, string: &str) {
         match self {
             StringInner::Small { data, len } => {
+                // NOTE: check how stdlib deals with capacity overflows
                 let new_len = *len as usize + string.len();
                 if new_len <= SSO_CAPACITY {
                     data[*len as usize..new_len].copy_from_slice(string.as_bytes());
@@ -190,7 +213,7 @@ impl StringInner {
                     new_data.extend_from_slice(&data[..*len as usize]);
                     new_data.extend_from_slice(string.as_bytes());
                     *self = StringInner::Large {
-                        data: Arc::from(new_data),
+                        data: Arc::new(new_data),
                         len: new_len,
                     };
                 }
@@ -205,7 +228,7 @@ impl StringInner {
                     let mut new_data = Vec::with_capacity(*len);
                     new_data.extend_from_slice(data.as_slice());
                     new_data.extend_from_slice(string.as_bytes());
-                    *data = Arc::from(new_data);
+                    *data = Arc::new(new_data);
                 }
             },
         };
