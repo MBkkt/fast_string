@@ -32,6 +32,12 @@ impl FastString {
     }
 }
 
+impl Default for FastString {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a> From<&'a str> for FastString {
     fn from(string: &str) -> Self {
         Self(StringInner::from(string))
