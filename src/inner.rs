@@ -1,10 +1,12 @@
 use std::mem::ManuallyDrop;
-use std::{mem::size_of, str::from_utf8_unchecked, sync::Arc, vec::Vec};
+use std::{mem::size_of, ptr, slice, str::from_utf8_unchecked, sync::Arc, vec::Vec};
 
 //               large len: 255 255 255 255
-// little endian last byte: x
-//    big endian last byte:               x
+// little endian last byte: x..
+//    big endian last byte:             ..x this is what we want
+//                                      x.. but this is what we get if the code is the same for big endian
 #[cfg(target_endian = "little")]
+#[derive(Clone)]
 #[repr(C)]
 struct Large {
     data: Arc<Vec<u8>>,
@@ -49,11 +51,7 @@ impl Clone for StringInner {
         unsafe {
             if self.is_large() {
                 Self {
-                    large: ManuallyDrop::new(Large {
-                        data: self.large.data.clone(),
-                        capacity: self.large.capacity,
-                        len: self.large.len,
-                    }),
+                    large: self.large.clone(),
                 }
             } else {
                 Self { small: self.small }
@@ -76,7 +74,9 @@ impl StringInner {
         let new_len = text.len();
         if new_len <= SMALL_CAPACITY {
             let mut new_data = [0; SMALL_CAPACITY];
-            new_data[..new_len].copy_from_slice(text.as_bytes());
+            unsafe {
+                ptr::copy_nonoverlapping(text.as_ptr(), new_data.as_mut_ptr(), new_len);
+            }
             StringInner {
                 small: Small {
                     data: new_data,
@@ -86,7 +86,7 @@ impl StringInner {
         } else {
             StringInner {
                 large: ManuallyDrop::new(Large {
-                    data: Arc::new(Vec::from(text.as_bytes())),
+                    data: Arc::new(Vec::from(text)),
                     capacity: 0,
                     len: new_len | LARGE_BIT,
                 }),
@@ -101,22 +101,17 @@ impl StringInner {
 
     pub fn as_str(&self) -> &str {
         unsafe {
-            if self.is_large() {
-                from_utf8_unchecked(self.large.data.as_slice())
+            from_utf8_unchecked(if self.is_large() {
+                self.large.data.as_slice()
             } else {
-                from_utf8_unchecked(&self.small.data[..self.small.len as usize])
-            }
+                slice::from_raw_parts(self.small.data.as_ptr(), self.small.len as usize)
+            })
         }
-    }
-
-    #[inline(always)]
-    pub fn push(&mut self, ch: char) {
-        let mut temp = [0u8; 4];
-        self.push_str(ch.encode_utf8(&mut temp));
     }
 
     pub fn push_str(&mut self, string: &str) {
         unsafe {
+            let str_len = string.len();
             if self.is_large() {
                 match Arc::get_mut(&mut self.large.data) {
                     Some(old_data) => {
@@ -124,7 +119,7 @@ impl StringInner {
                         self.large.len = old_data.len() | LARGE_BIT;
                     }
                     None => {
-                        let new_len = self.large.data.len() + string.len();
+                        let new_len = self.large.data.len() + str_len;
                         let mut new_data = Vec::with_capacity(new_len);
                         new_data.extend_from_slice(self.large.data.as_slice());
                         new_data.extend_from_slice(string.as_bytes());
@@ -134,9 +129,13 @@ impl StringInner {
                 }
             } else {
                 let old_len = self.small.len as usize;
-                let new_len = old_len + string.len();
+                let new_len = old_len + str_len;
                 if new_len <= SMALL_CAPACITY {
-                    self.small.data[old_len..new_len].copy_from_slice(string.as_bytes());
+                    ptr::copy_nonoverlapping(
+                        string.as_ptr(),
+                        self.small.data.as_mut_ptr().add(old_len),
+                        str_len,
+                    );
                     self.small.len = new_len as u8;
                 } else {
                     let mut new_data = Vec::with_capacity(new_len);
@@ -160,11 +159,13 @@ impl StringInner {
             Some(ch) => ch,
             None => panic!("cannot remove a char from the end of a string"),
         };
-        let next = idx + ch.len_utf8();
+
+        let len_ch = ch.len_utf8();
+        let next = idx + len_ch;
         unsafe {
             if self.is_large() {
                 let old_len = self.large.len & LARGE_MASK;
-                let new_len = old_len - ch.len_utf8();
+                let new_len = old_len - len_ch;
                 self.large.len = new_len | LARGE_BIT;
                 match Arc::get_mut(&mut self.large.data) {
                     Some(old_data) => {
@@ -179,8 +180,12 @@ impl StringInner {
                 }
             } else {
                 let old_len = self.small.len as usize;
-                self.small.data.copy_within(next..old_len, idx);
-                self.small.len = (old_len - ch.len_utf8()) as u8;
+                ptr::copy(
+                    self.small.data.as_ptr().add(next),
+                    self.small.data.as_mut_ptr().add(idx),
+                    old_len - next,
+                );
+                self.small.len = (old_len - len_ch) as u8;
             }
         }
         ch
