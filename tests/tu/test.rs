@@ -1,23 +1,9 @@
+use crate::is_same;
+use crate::random_string;
 use fast_string::FastString;
 use quickcheck::{Arbitrary, Gen};
 use quickcheck_macros::quickcheck;
-use rand::distributions::Alphanumeric;
 use rand::prelude::*;
-use rand::{thread_rng, Rng};
-use std::iter;
-
-fn random_string(n: usize) -> String {
-    let mut rng = thread_rng();
-    iter::repeat(())
-        .map(|()| rng.sample(Alphanumeric))
-        .map(char::from)
-        .take(n)
-        .collect()
-}
-
-fn is_same(s: &String, fs: &FastString) -> bool {
-    s.is_empty() == fs.is_empty() && s.len() == fs.len() && s == fs
-}
 
 fn push_command(s: &mut String, fs: &mut FastString, ch: char) -> bool {
     s.push(ch);
@@ -73,6 +59,8 @@ impl Arbitrary for Command {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #[quickcheck]
 fn test_push_prop(mut string: String, ch: char) -> bool {
     let mut fast_string = FastString::from(string.as_str());
@@ -111,12 +99,14 @@ fn test_all_prop(mut string: String, commands: Vec<Command>) -> bool {
             return false;
         }
     }
-    return true;
+    true
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[test]
 fn test_simple() {
-    for _ in 1..1000 {
+    for _ in 0..1000 {
         let x: u8 = random();
         let s = random_string(x as usize);
         let fs = FastString::from(s.as_str());
@@ -126,7 +116,7 @@ fn test_simple() {
 
 #[test]
 fn test_push() {
-    for _ in 1..1000 {
+    for _ in 0..1000 {
         let mut x: u8 = random();
         let mut s = random_string(x as usize);
         let mut fs = FastString::from(s.as_str());
@@ -141,7 +131,7 @@ fn test_push() {
 
 #[test]
 fn test_push_str() {
-    for _ in 1..1000 {
+    for _ in 0..1000 {
         let mut x: u8 = random();
         let mut s = random_string(x as usize);
         let mut fs = FastString::from(s.as_str());
@@ -154,7 +144,7 @@ fn test_push_str() {
 
 #[test]
 fn test_remove() {
-    for _ in 1..1000 {
+    for _ in 0..1000 {
         let x: u8 = random();
         let mut s = random_string(x as usize);
         let mut fs = FastString::from(s.as_str());
@@ -168,7 +158,7 @@ fn test_remove() {
 
 #[test]
 fn test_clone() {
-    for _n in 1..1000 {
+    for _ in 0..1000 {
         let mut x: u8 = random();
         let mut s = random_string(x as usize);
         let mut fs = FastString::from(s.as_str());
