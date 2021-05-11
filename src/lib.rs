@@ -13,12 +13,13 @@ impl FastString {
 
     #[inline(always)]
     pub fn as_str(&self) -> &str {
-        self.0.as_str()
+        self.0.as_str() // TODO len/is_empty here instead deref
     }
 
     #[inline(always)]
     pub fn push(&mut self, ch: char) {
-        self.0.push(ch);
+        let mut temp = [0u8; 4];
+        self.0.push_str(ch.encode_utf8(&mut temp));
     }
 
     #[inline(always)]
@@ -46,26 +47,26 @@ impl<'a> From<&'a str> for FastString {
 
 impl<'a> From<&'a mut str> for FastString {
     fn from(string: &mut str) -> Self {
-        Self(StringInner::from(string))
+        Self::from(&*string)
     }
 }
 
 impl From<String> for FastString {
     fn from(string: String) -> Self {
-        Self(StringInner::from(string.as_str()))
+        Self::from(string.as_str())
     }
 }
 
 impl From<FastString> for String {
     fn from(string: FastString) -> Self {
-        String::from(string.as_str())
+        Self::from(string.as_str())
     }
 }
 
 impl From<char> for FastString {
     fn from(ch: char) -> Self {
         let mut temp = [0u8; 4];
-        Self(StringInner::from(ch.encode_utf8(&mut temp)))
+        Self::from(ch.encode_utf8(&mut temp))
     }
 }
 
