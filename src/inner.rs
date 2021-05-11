@@ -56,9 +56,7 @@ impl Clone for StringInner {
                     }),
                 }
             } else {
-                Self {
-                    small: self.small.clone(),
-                }
+                Self { small: self.small }
             }
         }
     }
