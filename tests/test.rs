@@ -75,25 +75,25 @@ impl Arbitrary for Command {
 
 #[quickcheck]
 fn test_push_prop(mut string: String, ch: char) -> bool {
-    let mut fast_string = FastString::new(string.as_str());
+    let mut fast_string = FastString::from(string.as_str());
     push_command(&mut string, &mut fast_string, ch)
 }
 
 #[quickcheck]
 fn test_push_str_prop(mut string: String, add: String) -> bool {
-    let mut fast_string = FastString::new(string.as_str());
+    let mut fast_string = FastString::from(string.as_str());
     push_str_command(&mut string, &mut fast_string, add.as_str())
 }
 
 #[quickcheck]
 fn test_remove_prop(mut string: String, index: usize) -> bool {
-    let mut fast_string = FastString::new(string.as_str());
+    let mut fast_string = FastString::from(string.as_str());
     remove_command(&mut string, &mut fast_string, index)
 }
 
 #[quickcheck]
 fn test_all_prop(mut string: String, commands: Vec<Command>) -> bool {
-    let mut fast_string = FastString::new(string.as_str());
+    let mut fast_string = FastString::from(string.as_str());
     let mut clones = Vec::new();
     for command in commands.iter() {
         let result = match command {
@@ -119,7 +119,7 @@ fn test_simple() {
     for _ in 1..1000 {
         let x: u8 = random();
         let s = random_string(x as usize);
-        let fs = FastString::new(s.as_str());
+        let fs = FastString::from(s.as_str());
         assert!(is_same(&s, &fs));
     }
 }
@@ -129,7 +129,7 @@ fn test_push() {
     for _ in 1..1000 {
         let mut x: u8 = random();
         let mut s = random_string(x as usize);
-        let mut fs = FastString::new(s.as_str());
+        let mut fs = FastString::from(s.as_str());
         x = random();
         let add = random_string(x as usize);
         assert!(is_same(&s, &fs));
@@ -144,7 +144,7 @@ fn test_push_str() {
     for _ in 1..1000 {
         let mut x: u8 = random();
         let mut s = random_string(x as usize);
-        let mut fs = FastString::new(s.as_str());
+        let mut fs = FastString::from(s.as_str());
         x = random();
         let add = random_string(x as usize);
         assert!(is_same(&s, &fs));
@@ -157,7 +157,7 @@ fn test_remove() {
     for _ in 1..1000 {
         let x: u8 = random();
         let mut s = random_string(x as usize);
-        let mut fs = FastString::new(s.as_str());
+        let mut fs = FastString::from(s.as_str());
         assert!(is_same(&s, &fs));
         while !fs.is_empty() {
             let index = random();
@@ -171,7 +171,7 @@ fn test_clone() {
     for _n in 1..1000 {
         let mut x: u8 = random();
         let mut s = random_string(x as usize);
-        let mut fs = FastString::new(s.as_str());
+        let mut fs = FastString::from(s.as_str());
         let mut fs_clone = fs.clone();
         assert!(is_same(&s, &fs));
         assert!(is_same(&s, &fs_clone));
