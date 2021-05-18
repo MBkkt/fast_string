@@ -15,9 +15,9 @@ enum BenchType {
 
 fn get_iter(bench_type: BenchType) -> usize {
     match bench_type {
-        BenchType::Small => 100_000,
-        BenchType::Medium => 10_000,
-        BenchType::Large => 1_000,
+        BenchType::Small => 1000_000,
+        BenchType::Medium => 100_000,
+        BenchType::Large => 10_000,
     }
 }
 
