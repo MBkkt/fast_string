@@ -48,13 +48,14 @@ struct BlackBox {
 }
 
 impl BlackBox {
-    fn new() -> Self {
+    fn with_capacity(capacity: usize) -> Self {
         BlackBox {
-            strings: vec![],
-            fast_strings: vec![],
-            sizes: vec![],
+            strings: Vec::with_capacity(capacity),
+            fast_strings: Vec::with_capacity(capacity),
+            sizes: Vec::with_capacity(capacity),
         }
     }
+
     #[inline(never)]
     fn light_add(&mut self, s: &mut String, fs: &mut FastString) {
         assert!(is_same(&s, &fs));
@@ -99,8 +100,9 @@ fn bench_from_small() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
-    for _ in 0..get_iter(BenchType::Small) {
+    let iter = get_iter(BenchType::Small);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for _ in 0..iter {
         let x: usize = random();
         let example = random_string(x % 23 + 1);
 
@@ -124,8 +126,9 @@ fn bench_from_medium() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
-    for _ in 0..get_iter(BenchType::Medium) {
+    let iter = get_iter(BenchType::Medium);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for _ in 0..iter {
         let x: usize = random();
         let example = random_string(x % 1024 + 1024);
 
@@ -149,10 +152,12 @@ fn bench_from_large() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
     let mut x: usize = random();
     let mut example: String = random_string(x % 1024 + 1024 * 1023);
-    for i in 0..get_iter(BenchType::Large) {
+
+    let iter = get_iter(BenchType::Large);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for i in 0..iter {
         if i % 100 == 0 {
             x = random();
             example = random_string(x % 1024 + 1024 * 1023);
@@ -179,8 +184,9 @@ fn bench_clone_small() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
-    for _ in 0..get_iter(BenchType::Small) {
+    let iter = get_iter(BenchType::Small);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for _ in 0..iter {
         let x: usize = random();
         let s_example = random_string(x % 23 + 1);
         let fs_example = FastString::from(s_example.as_str());
@@ -206,8 +212,9 @@ fn bench_clone_medium() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
-    for _ in 0..get_iter(BenchType::Medium) {
+    let iter = get_iter(BenchType::Medium);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for _ in 0..iter {
         let x: usize = random();
         let s_example = random_string(x % 1024 + 1024);
         let fs_example = FastString::from(s_example.as_str());
@@ -237,8 +244,9 @@ fn bench_clone_large() {
     let mut s_example = String::new();
     let mut fs_example = FastString::new();
 
-    let mut blackbox = BlackBox::new();
-    for i in 0..get_iter(BenchType::Large) {
+    let iter = get_iter(BenchType::Large);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for i in 0..iter {
         if i % 100 == 0 {
             x = random();
             s_example = random_string(x % 1024 + 1024 * 1023);
@@ -267,8 +275,9 @@ fn bench_push_small() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
-    for _ in 0..get_iter(BenchType::Small) {
+    let iter = get_iter(BenchType::Small);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for _ in 0..iter {
         let x: usize = random();
         let mut s = random_string(x % 23 + 1);
         let mut fs = FastString::from(s.as_str());
@@ -295,8 +304,9 @@ fn bench_push_medium() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
-    for _ in 0..get_iter(BenchType::Medium) {
+    let iter = get_iter(BenchType::Medium);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for _ in 0..iter {
         let x: usize = random();
         let mut s = random_string(x % 1024 + 1024);
         let mut fs = FastString::from(s.as_str());
@@ -323,11 +333,13 @@ fn bench_push_large() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
     let mut x: usize;
     let mut s = String::new();
     let mut fs = FastString::new();
-    for i in 0..get_iter(BenchType::Large) {
+
+    let iter = get_iter(BenchType::Large);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for i in 0..iter {
         if i % 100 == 0 {
             x = random();
             s = random_string(x % 1024 + 1024 * 1023);
@@ -358,11 +370,13 @@ fn bench_push_str() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
     let mut x: usize;
     let mut s = String::new();
     let mut fs = FastString::new();
-    for i in 0..get_iter(BenchType::Large) {
+
+    let iter = get_iter(BenchType::Large);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for i in 0..iter {
         if i % 100 == 0 {
             x = random();
             s = random_string(x % 1024 + 1024 * 1023);
@@ -395,8 +409,9 @@ fn bench_remove_small() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
-    for _ in 0..get_iter(BenchType::Small) {
+    let iter = get_iter(BenchType::Small);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for _ in 0..iter {
         let mut x: usize = random();
         let mut s = random_string(x % 23 + 1);
         let mut fs = FastString::from(s.as_str());
@@ -428,8 +443,9 @@ fn bench_remove_medium() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
-    for _ in 0..get_iter(BenchType::Medium) {
+    let iter = get_iter(BenchType::Medium);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for _ in 0..iter {
         let mut x: usize = random();
         let mut s = random_string(x % 1024 + 1024);
         let mut fs = FastString::from(s.as_str());
@@ -461,11 +477,13 @@ fn bench_remove_large() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
 
-    let mut blackbox = BlackBox::new();
     let mut x: usize;
     let mut s = String::new();
     let mut fs = FastString::new();
-    for i in 0..get_iter(BenchType::Large) {
+
+    let iter = get_iter(BenchType::Large);
+    let mut blackbox = BlackBox::with_capacity(iter);
+    for i in 0..iter {
         if i % 100 == 0 {
             x = random();
             s = random_string(x % 1024 + 1024 * 1023);
