@@ -1,29 +1,25 @@
-use std::{
-    cmp::Ord, cmp::Ordering, fmt, hash, mem::size_of, str::from_utf8_unchecked, sync::Arc, vec::Vec,
-};
+mod inner;
+
+use inner::StringInner;
+use std::{cmp::Ord, cmp::Ordering, fmt, hash};
 
 #[derive(Clone)]
 pub struct FastString(StringInner);
 
 impl FastString {
-    #[inline(always)]
-    pub fn new<T>(string: T) -> FastString
-    // TODO empty string and From
-    where
-        T: AsRef<str>,
-    {
-        // TODO Why?
-        FastString(StringInner::new(string.as_ref()))
+    pub fn new() -> Self {
+        Self(StringInner::new())
     }
 
     #[inline(always)]
     pub fn as_str(&self) -> &str {
-        self.0.as_str()
+        self.0.as_str() // TODO len/is_empty here instead deref
     }
 
     #[inline(always)]
     pub fn push(&mut self, ch: char) {
-        self.0.push(ch);
+        let mut temp = [0u8; 4];
+        self.0.push_str(ch.encode_utf8(&mut temp));
     }
 
     #[inline(always)]
@@ -34,6 +30,43 @@ impl FastString {
     #[inline(always)]
     pub fn remove(&mut self, idx: usize) -> char {
         self.0.remove(idx)
+    }
+}
+
+impl Default for FastString {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a> From<&'a str> for FastString {
+    fn from(string: &str) -> Self {
+        Self(StringInner::from(string))
+    }
+}
+
+impl<'a> From<&'a mut str> for FastString {
+    fn from(string: &mut str) -> Self {
+        Self::from(&*string)
+    }
+}
+
+impl From<String> for FastString {
+    fn from(string: String) -> Self {
+        Self::from(string.as_str())
+    }
+}
+
+impl From<FastString> for String {
+    fn from(string: FastString) -> Self {
+        Self::from(string.as_str())
+    }
+}
+
+impl From<char> for FastString {
+    fn from(ch: char) -> Self {
+        let mut temp = [0u8; 4];
+        Self::from(ch.encode_utf8(&mut temp))
     }
 }
 
@@ -128,115 +161,5 @@ impl PartialOrd for FastString {
 impl hash::Hash for FastString {
     fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
         self.as_str().hash(hasher)
-    }
-}
-
-const fn max(a: usize, b: usize) -> usize {
-    [a, b][(a < b) as usize]
-}
-
-const SSO_CAPACITY: usize = max(size_of::<Arc<Vec<u8>>>(), 24) - 1;
-
-#[derive(Clone, Debug)]
-enum StringInner {
-    Small { data: [u8; SSO_CAPACITY], len: u8 },
-    Large { data: Arc<Vec<u8>>, len: usize },
-}
-
-impl StringInner {
-    fn new(text: &str) -> Self {
-        let new_len = text.len();
-        return if new_len <= SSO_CAPACITY {
-            let mut new_data = [0; SSO_CAPACITY];
-            new_data[..new_len].copy_from_slice(text.as_bytes());
-            StringInner::Small {
-                data: new_data,
-                len: new_len as u8,
-            }
-        } else {
-            StringInner::Large {
-                data: Arc::from(Vec::from(text.as_bytes())),
-                len: new_len,
-            }
-        };
-    }
-
-    fn as_str(&self) -> &str {
-        match self {
-            StringInner::Small { data, len } => {
-                let len = *len as usize;
-                unsafe { from_utf8_unchecked(&data[..len]) } // TODO unsafe
-            }
-            StringInner::Large { data, len: _ } => {
-                unsafe { from_utf8_unchecked(data.as_slice()) } // TODO unsafe
-            }
-        }
-    }
-
-    fn push(&mut self, ch: char) {
-        let mut temp = [0u8; 4];
-        self.push_str(ch.encode_utf8(&mut temp));
-    }
-
-    fn push_str(&mut self, string: &str) {
-        match self {
-            StringInner::Small { data, len } => {
-                let new_len = *len as usize + string.len();
-                if new_len <= SSO_CAPACITY {
-                    data[*len as usize..new_len].copy_from_slice(string.as_bytes());
-                    *len = new_len as u8
-                } else {
-                    let mut new_data = Vec::with_capacity(new_len);
-                    new_data.extend_from_slice(&data[..*len as usize]);
-                    new_data.extend_from_slice(string.as_bytes());
-                    *self = StringInner::Large {
-                        data: Arc::from(new_data),
-                        len: new_len,
-                    };
-                }
-            }
-            StringInner::Large { data, len } => match Arc::get_mut(data) {
-                Some(old_data) => {
-                    old_data.extend_from_slice(string.as_bytes());
-                    *len = old_data.len();
-                }
-                None => {
-                    *len = data.len() + string.len();
-                    let mut new_data = Vec::with_capacity(*len);
-                    new_data.extend_from_slice(data.as_slice());
-                    new_data.extend_from_slice(string.as_bytes());
-                    *data = Arc::from(new_data);
-                }
-            },
-        };
-    }
-
-    fn remove(&mut self, idx: usize) -> char {
-        let ch = match self.as_str()[idx..].chars().next() {
-            Some(ch) => ch,
-            None => panic!("cannot remove a char from the end of a string"),
-        };
-        let next = idx + ch.len_utf8();
-        match self {
-            StringInner::Small { data, len } => {
-                data.copy_within(next..*len as usize, idx);
-                *len -= ch.len_utf8() as u8;
-            }
-            StringInner::Large { data, len } => {
-                *len -= ch.len_utf8();
-                match Arc::get_mut(data) {
-                    Some(old_data) => {
-                        old_data.drain(idx..next);
-                    }
-                    None => {
-                        let mut new_data = Vec::with_capacity(*len);
-                        new_data.extend_from_slice(&data.as_slice()[..idx]);
-                        new_data.extend_from_slice(&data.as_slice()[next..]);
-                        *data = Arc::from(new_data);
-                    }
-                }
-            }
-        };
-        ch
     }
 }
