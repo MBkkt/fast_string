@@ -34,7 +34,7 @@ fn print_bench_result(bench_type: BenchType, name: &str, s_time: Duration, fs_ti
         println!("FastString faster than std::String");
     }
     println!(
-        "FastString {} % of the time std::String",
+        "FastString {:0.2} % of the time std::String",
         fs_time.as_nanos() as f64 / s_time.as_nanos() as f64 * 100.0
     );
     println!("std::String time: {:?}", s_time);
