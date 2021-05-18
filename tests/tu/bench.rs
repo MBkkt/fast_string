@@ -354,6 +354,43 @@ fn bench_push_large() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[test]
+fn bench_push_str() {
+    let mut s_time = Duration::from_nanos(0);
+    let mut fs_time = Duration::from_nanos(0);
+
+    let mut blackbox = BlackBox::new();
+    let mut x: usize;
+    let mut s = String::new();
+    let mut fs = FastString::new();
+    for i in 0..get_iter(BenchType::Large) {
+        if i % 100 == 0 {
+            x = random();
+            s = random_string(x % 1024 + 1024 * 1023);
+            fs = FastString::from(s.as_str());
+            assert!(is_same(&s, &fs));
+        }
+        if i % 50 == 0 {
+            x = random();
+            let for_push = random_string(x % 1024 + 1024 * 1023);
+            let s_start = Instant::now();
+            s.push_str(for_push.as_str());
+            s_time += s_start.elapsed();
+
+            let fs_start = Instant::now();
+            fs.push_str(for_push.as_str());
+            fs_time += fs_start.elapsed();
+
+            blackbox.light_add(&mut s, &mut fs);
+        }
+    }
+    blackbox.finish();
+
+    print_bench_result(BenchType::Large, "push_str", s_time, fs_time);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#[test]
 fn bench_remove_small() {
     let mut s_time = Duration::from_nanos(0);
     let mut fs_time = Duration::from_nanos(0);
